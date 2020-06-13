@@ -64,9 +64,26 @@ void check_args(int argc, char **argv){
 #endif
 }
 
+void print_hex(uint8_t* arr, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%02x", arr[i]);
+    }
+}
+
 int sha1_main(int argc, char **argv){
-    /* TODO */
-    std::cout << "sha1_main\n";
+    uint8_t result[PREFIX_LEN];
+
+    const unsigned int threads_per_block = atoi(argv[1]);
+    const unsigned int max_blocks = atoi(argv[2]);
+
+    bool success = cudaCallShaFixpointSearchKernel(threads_per_block, max_blocks, result);
+    if (success) {
+        print_hex(result);
+        std::cout << " is a fixpoint\n";
+    } else {
+        std::cout << "no fixpoints found :(\n";
+    }
+
     return EXIT_SUCCESS;
 }
 
