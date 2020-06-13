@@ -102,7 +102,8 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
     p.n = blockDim.x * blockIdx.x + threadIdx.x;
     uint8_t result[PREFIX_LEN];
 
-    while (p.n <= PREFIX_COUNTER_MAX) {
+    uint prev_n;
+    do {
         sha1ofPrefix(result, p.prefix);
 
         if (arr_equal(result, p.prefix, PREFIX_LEN)) {
@@ -111,8 +112,9 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
             // TODO quit all threads
         }
 
+        prev_n = p.n;
         p.n += blockDim.x * gridDim.x;
-    }
+    } while (p.n > prev_n);
 }
 
 
