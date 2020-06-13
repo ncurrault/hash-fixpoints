@@ -76,24 +76,21 @@ int sha1_main(int argc, char **argv){
     const unsigned int threads_per_block = atoi(argv[1]);
     const unsigned int max_blocks = atoi(argv[2]);
 
-
     bool h_success, *d_success;
     gpuErrchk(cudaMalloc(&d_success, sizeof(bool)));
     gpuErrchk(cudaMemset(d_success, 0, sizeof(bool)));
 
-    uint8_t *h_result, *d_result;
+    uint8_t *d_result;
     gpuErrchk(cudaMalloc(&d_result, PREFIX_LEN * sizeof(uint8_t)));
-    h_result = (uint8_t*)malloc(PREFIX_LEN * sizeof(uint8_t));
 
     cudaCallShaFixpointSearchKernel(max_blocks, threads_per_block, d_success, d_result);
 
-    bool host_success;
     gpuErrchk(cudaMemcpy(&h_success, d_success, sizeof(bool), cudaMemcpyDeviceToHost));
-    gpuErrchk(cudaMemcpy(h_result, d_result, PREFIX_LEN * sizeof(uint8_t),
+    gpuErrchk(cudaMemcpy(result, d_result, PREFIX_LEN * sizeof(uint8_t),
         cudaMemcpyDeviceToHost));
 
     if (h_success) {
-        print_hex(h_result, PREFIX_LEN);
+        print_hex(result, PREFIX_LEN);
         std::cout << " is a fixpoint\n";
     } else {
         std::cout << "no fixpoints found :(\n";
