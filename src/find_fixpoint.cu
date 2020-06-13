@@ -86,6 +86,15 @@ void sha1ofPrefix(uint8_t* result, uint8_t* prefix) {
     }
 }
 
+__device__ bool arr_equal(uint8_t* a, uint8_t* b, unsigned int size) {
+    for (int i = 0; i < size; i++) {
+        if (a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 __global__
 void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
     PrefixCounter p;
@@ -95,7 +104,7 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
     while (p.n <= PREFIX_COUNTER_MAX) {
         sha1ofPrefix(result, p.prefix);
 
-        if (! memcmp(result, p.prefix, PREFIX_LEN)) {
+        if (arr_equal(result, p.prefix, PREFIX_LEN)) {
             *success = true;
             memcpy(prefix, p.prefix, PREFIX_LEN);
             // TODO quit all threads
