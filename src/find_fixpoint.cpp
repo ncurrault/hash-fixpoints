@@ -83,13 +83,13 @@ int sha1_main(int argc, char **argv){
 
     uint8_t *h_result, *d_result;
     gpuErrchk(cudaMalloc(&d_result, PREFIX_LEN * sizeof(uint8_t)));
-    h_result = malloc(PREFIX_LEN * sizeof(uint8_t));
+    h_result = (uint8_t*)malloc(PREFIX_LEN * sizeof(uint8_t));
 
     cudaCallShaFixpointSearchKernel(max_blocks, threads_per_block, d_success, d_result);
 
     bool host_success;
     gpuErrchk(cudaMemcpy(&h_success, d_success, sizeof(bool), cudaMemcpyDeviceToHost));
-    gpuErrchk(cudaMemcpy(resultDest, prefix, PREFIX_LEN * sizeof(uint8_t),
+    gpuErrchk(cudaMemcpy(h_result, d_result, PREFIX_LEN * sizeof(uint8_t),
         cudaMemcpyDeviceToHost));
 
     if (h_success) {
