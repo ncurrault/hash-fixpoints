@@ -109,8 +109,8 @@ int main(int argc, char **argv){
     // This project will be tested on a course server; these are left in as a courtesy
     TA_Utilities::select_coldest_GPU();
 
-    int max_time_allowed_in_seconds = 90;
-    TA_Utilities::enforce_time_limit(max_time_allowed_in_seconds);
+    //int max_time_allowed_in_seconds = 90;
+    //TA_Utilities::enforce_time_limit(max_time_allowed_in_seconds);
 
     check_args(argc, argv);
 
