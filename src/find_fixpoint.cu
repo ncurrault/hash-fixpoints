@@ -116,24 +116,10 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
 }
 
 
-bool cudaCallShaFixpointSearchKernel(const unsigned int blocks,
-    const unsigned int threads_per_block, uint8_t* resultDest) {
+void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
+    const unsigned int threads_per_block, bool* success, uint8_t* result) {
 
-    bool* success;
-    cudaMalloc(&success, sizeof(bool));
-    cudaMemset(success, 0, sizeof(bool));
-
-    uint8_t* prefix;
-    cudaMalloc(&prefix, PREFIX_LEN * sizeof(uint8_t));
-
-    cudaShaFixpointSearchKernel<<<blocks, threads_per_block>>>(success, prefix);
-
-    bool host_success;
-    cudaMemcpy(&host_success, success, sizeof(bool), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&resultDest, prefix, PREFIX_LEN * sizeof(uint8_t),
-        cudaMemcpyDeviceToHost);
-
-    return host_success;
+    cudaShaFixpointSearchKernel<<<blocks, threads_per_block>>>(success, result);
 }
 
 

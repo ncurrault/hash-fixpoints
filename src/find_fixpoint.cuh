@@ -13,9 +13,8 @@ union PrefixCounter {
 };
 
 
-bool cudaCallShaFixpointSearchKernel(const unsigned int threads_per_block,
-    const unsigned int blocks, uint8_t* resultDest);
-
+void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
+    const unsigned int threads_per_block, bool* success, uint8_t* result);
 
 // void cudaTreeFixpointSearchKernel
 
