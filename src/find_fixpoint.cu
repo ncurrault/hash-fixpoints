@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include <cuda_runtime.h>
+#define CUDA_CALLABLE __host__ __device__
 
 #include "find_fixpoint.cuh"
 
@@ -39,7 +40,7 @@ void sha1ofPrefix(uint8_t* result, uint8_t* prefix) {
     for (int i = 0; i < 16; i++) {
         uint8_t* current_word = (uint8_t*)(w + i);
         for (int byte = 0; byte < 4; byte++) {
-            current_word[3 - byte] = message_padded[ chunk + (4 * i) + byte ];
+            current_word[3 - byte] = message_padded[ (4 * i) + byte ];
         }
     }
 

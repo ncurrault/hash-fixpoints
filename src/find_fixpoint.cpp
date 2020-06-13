@@ -78,7 +78,7 @@ int sha1_main(int argc, char **argv){
 
     bool success = cudaCallShaFixpointSearchKernel(threads_per_block, max_blocks, result);
     if (success) {
-        print_hex(result);
+        print_hex(result, PREFIX_LEN);
         std::cout << " is a fixpoint\n";
     } else {
         std::cout << "no fixpoints found :(\n";
