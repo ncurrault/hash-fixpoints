@@ -28,6 +28,7 @@ void sha1ofPrefix(uint8_t* result, uint8_t* prefix) {
 
     // ASSUMPTION: 0 < PREFIX_LEN < 56
     uint8_t message_padded[64];
+    memset(message_padded, 0, sizeof(message_padded));
     memcpy(message_padded, prefix, PREFIX_LEN);
     message_padded[PREFIX_LEN] = 0x80;
 
@@ -120,6 +121,7 @@ bool cudaCallShaFixpointSearchKernel(const unsigned int blocks,
 
     bool* success;
     cudaMalloc(&success, sizeof(bool));
+    cudaMemset(success, 0, sizeof(bool));
 
     uint8_t* prefix;
     cudaMalloc(&prefix, PREFIX_LEN * sizeof(uint8_t));
