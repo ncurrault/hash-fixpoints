@@ -1,11 +1,10 @@
 #include <cstdio>
 
 #include <cuda_runtime.h>
-#define CUDA_CALLABLE __host__ __device__
 
 #include "find_fixpoint.cuh"
 
-CUDA_CALLABLE
+__device__
 uint32_t leftrotate(uint32_t a, uint32_t b) {
     uint32_t high = a << b;
     uint32_t low  = a >> (32 - b);
@@ -15,7 +14,7 @@ uint32_t leftrotate(uint32_t a, uint32_t b) {
 /* adapted from https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
    assumes message is PREFIX_LEN bytes
 */
-CUDA_CALLABLE
+__device__
 void sha1ofPrefix(uint8_t* result, uint8_t* prefix) {
     uint32_t
         h0 = 0x67452301,
@@ -98,7 +97,7 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
 
         if (! memcmp(result, p.prefix, PREFIX_LEN)) {
             *success = true;
-            *prefix = p.prefix;
+            memcpy(prefix, p.prefix, PREFIX_LEN);
             // TODO quit all threads
         }
 
@@ -119,8 +118,9 @@ bool cudaCallShaFixpointSearchKernel(const unsigned int blocks,
     cudaShaFixpointSearchKernel<<<blocks, threads_per_block>>>(success, prefix);
 
     bool host_success;
-    cudaMemcpy(&host_success, success, cudaMemcpyDeviceToHost);
-    cudaMemcpy(&resultDest, prefix, cudaMemcpyDeviceToHost);
+    cudaMemcpy(&host_success, success, sizeof(bool), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&resultDest, prefix, PREFIX_LEN * sizeof(uint8_t),
+        cudaMemcpyDeviceToHost);
 
     return host_success;
 }
