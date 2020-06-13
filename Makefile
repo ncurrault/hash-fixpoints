@@ -1,13 +1,11 @@
-# CS 179 Lab 3 Unix Makefile
-# Written by Loko Kung, 2018
-# Edited by Tyler Port, 2018
+# Makefile adapted from an assignment in a GPU course
 
 # Product Names
 CUDA_OBJ = cuda.o
 
 # Input Names
-CUDA_FILES = src/fft_convolve.cu
-CPP_FILES = src/fft_convolve.cpp src/ta_utilities.cpp
+CUDA_FILES = src/find_fixpoint.cu
+CPP_FILES = src/find_fixpoint.cpp src/ta_utilities.cpp
 
 # ------------------------------------------------------------------------------
 
@@ -28,7 +26,7 @@ endif
 NVCC_FLAGS += -g -dc -Wno-deprecated-gpu-targets --std=c++11 \
              --expt-relaxed-constexpr
 NVCC_INCLUDE =
-NVCC_LIBS = 
+NVCC_LIBS =
 NVCC_GENCODES = -gencode arch=compute_30,code=sm_30 \
 		-gencode arch=compute_35,code=sm_35 \
 		-gencode arch=compute_50,code=sm_50 \
@@ -58,25 +56,25 @@ LIBS = -L$(CUDA_LIB_PATH) -lcudart -lcufft -lsndfile
 # ------------------------------------------------------------------------------
 
 # C++ Object Files
-OBJ_AUDIO = $(addprefix audio-, $(notdir $(addsuffix .o, $(CPP_FILES))))
-OBJ_NOAUDIO = $(addprefix noaudio-, $(notdir $(addsuffix .o, $(CPP_FILES))))
+OBJ_TREE = $(addprefix tree-, $(notdir $(addsuffix .o, $(CPP_FILES))))
+OBJ_SHA1 = $(addprefix sha1-, $(notdir $(addsuffix .o, $(CPP_FILES))))
 
 # Top level rules
-all: audio noaudio
+all: tree sha1
 
-audio: $(OBJ_AUDIO) $(CUDA_OBJ) $(CUDA_OBJ_FILES)
-	$(GPP) $(FLAGS) -o audio-fft $(INCLUDE) $^ $(LIBS) 
+tree: $(OBJ_TREE) $(CUDA_OBJ) $(CUDA_OBJ_FILES)
+	$(GPP) $(FLAGS) -o tree-fixpoint $(INCLUDE) $^ $(LIBS)
 
-noaudio: $(OBJ_NOAUDIO) $(CUDA_OBJ) $(CUDA_OBJ_FILES)
-	$(GPP) $(FLAGS) -o noaudio-fft $(INCLUDE) $^ $(LIBS) 
+sha1: $(OBJ_SHA1) $(CUDA_OBJ) $(CUDA_OBJ_FILES)
+	$(GPP) $(FLAGS) -o sha1-fixpoint $(INCLUDE) $^ $(LIBS)
 
 
 # Compile C++ Source Files
-audio-%.cpp.o: src/%.cpp
-	$(GPP) $(FLAGS) -D AUDIO_ON=1 -c -o $@ $(INCLUDE) $< 
+tree-%.cpp.o: src/%.cpp
+	$(GPP) $(FLAGS) -D SIMPLE_SHA=0 -c -o $@ $(INCLUDE) $<
 
-noaudio-%.cpp.o: src/%.cpp
-	$(GPP) $(FLAGS) -D AUDIO_ON=0 -c -o $@ $(INCLUDE) $< 
+sha1-%.cpp.o: src/%.cpp
+	$(GPP) $(FLAGS) -D SIMPLE_SHA=1 -c -o $@ $(INCLUDE) $<
 
 
 # Compile CUDA Source Files
@@ -92,7 +90,7 @@ $(CUDA_OBJ): $(CUDA_OBJ_FILES)
 
 # Clean everything including temporary Emacs files
 clean:
-	rm -f audio-fft noaudio-fft *.o *~
+	rm -f tree-fixpoint sha1-fixpoint *.o *~
 	rm -f src/*~
 
 .PHONY: clean
