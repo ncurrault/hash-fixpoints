@@ -140,8 +140,10 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
 
     uint32_t w[80];
     for (int chunk = 0; chunk < n_bytes; chunk += 64) {
+        #pragma unroll
         for (int i = 0; i < 16; i++) {
             uint8_t* current_word = (uint8_t*)(w + i);
+            #pragma unroll
             for (int byte = 0; byte < 4; byte++) {
                 int read_idx = chunk + (4 * i) + byte;
                 current_word[3 - byte] =
@@ -154,27 +156,55 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         // generating the words is also theoretically easier on a big-endian
         // system: memcpy(w, message_padded + chunk, 16 * sizeof(uint32_t));
 
+        #pragma unroll
         for (int i = 16; i < 80; i++) {
             w[i] = leftrotate(w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16], 1);
         }
 
-        uint32_t a = h0, b = h1, c = h2, d = h3, e = h4, f, k;
-        for (int i = 0; i < 80; i++) {
-            if (i < 20) {
-                f = (b & c) | ((~b) & d);
-                k = 0x5A827999;
-            } else if (i < 40) {
-                f = b ^ c ^ d;
-                k = 0x6ED9EBA1;
-            } else if (i < 60) {
-                f = (b & c) | (b & d) | (c & d);
-                k = 0x8F1BBCDC;
-            } else {
-                f = b ^ c ^ d;
-                k = 0xCA62C1D6;
-            }
+        uint32_t a = h0, b = h1, c = h2, d = h3, e = h4, f, k, temp;
 
-            uint32_t temp = leftrotate(a, 5) + f + e + k + w[i];
+        #pragma unroll
+        for (int i = 0; i < 20; i++) {
+            f = (b & c) | ((~b) & d);
+            k = 0x5A827999;
+
+            temp = leftrotate(a, 5) + f + e + k + w[i];
+            e = d;
+            d = c;
+            c = leftrotate(b, 30);
+            b = a;
+            a = temp;
+        }
+        #pragma unroll
+        for (int i = 20; i < 40; i++) {
+            f = b ^ c ^ d;
+            k = 0x6ED9EBA1;
+
+            temp = leftrotate(a, 5) + f + e + k + w[i];
+            e = d;
+            d = c;
+            c = leftrotate(b, 30);
+            b = a;
+            a = temp;
+        }
+        #pragma unroll
+        for (int i = 40; i < 60; i++) {
+            f = (b & c) | (b & d) | (c & d);
+            k = 0x8F1BBCDC;
+
+            temp = leftrotate(a, 5) + f + e + k + w[i];
+            e = d;
+            d = c;
+            c = leftrotate(b, 30);
+            b = a;
+            a = temp;
+        }
+        #pragma unroll
+        for (int i = 60; i < 80; i++) {
+            f = b ^ c ^ d;
+            k = 0xCA62C1D6;
+
+            temp = leftrotate(a, 5) + f + e + k + w[i];
             e = d;
             d = c;
             c = leftrotate(b, 30);
@@ -189,6 +219,7 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         h4 += e;
     }
 
+    #pragma unroll
     for (int i = 0; i < 4; i++) {
         result[ 3 - i] = h0 >> 8 * i;
         result[ 7 - i] = h1 >> 8 * i;
