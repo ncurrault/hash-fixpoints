@@ -191,16 +191,36 @@ void load_tree_from_dir(struct TreeData& tree, const char* dir) {
             tree.insertion_sizes[layer] = DIGEST_LEN;
         }
 
-        tree.layer_sizes[layer] = prefix_sizes[layer] +
-            suffix_sizes[layer] + tree.insertion_sizes[layer];
+        int raw_size = prefix_sizes[layer] + suffix_sizes[layer] +
+            tree.insertion_sizes[layer];
+
+        // perform SHA-1 preprocessing while loading the data for efficiency
+        // (reallocating memory in each iteration/GPU thread is very slow)
+        uint64_t m1 = 8 * raw_size;
+
+        int pad_bytes = 56 - (raw_size % 64);
+        if (pad_bytes <= 0) { // if = 0, need to increase so there's room for 0x80
+            pad_bytes += 64;
+        }
+        tree.layer_sizes[layer] = raw_size + pad_bytes + 8;
+
         tree.layer_templates[layer] = (uint8_t*)
-            malloc(tree.layer_sizes[layer]);
+            calloc(tree.layer_sizes[layer], sizeof(uint8_t));
+            // ensures that memory used for padding is zeroed
 
         memcpy(tree.layer_templates[layer],
             prefixes[layer], prefix_sizes[layer]);
         memcpy(tree.layer_templates[layer] + prefix_sizes[layer] +
             tree.insertion_sizes[layer], suffixes[layer],
             suffix_sizes[layer]);
+
+        tree.layer_templates[layer][raw_size] = 0x80;
+        for (int i = 0; i < 8; i++) {
+            // have to reverse because system is litte-endian and SHA-1
+            // requires big-endian ordering
+            tree.layer_templates[layer][raw_size + pad_bytes + i] =
+                ((uint8_t*)&m1)[ 7 - i ];
+        }
     }
 
     for (int i = 0; i < num_layers; i++) {

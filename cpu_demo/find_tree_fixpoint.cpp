@@ -125,16 +125,36 @@ void load_tree_from_dir(struct TreeData& tree, const char* dir) {
             tree.insertion_sizes[layer] = DIGEST_LEN;
         }
 
-        tree.layer_sizes[layer] = prefix_sizes[layer] +
-            suffix_sizes[layer] + tree.insertion_sizes[layer];
+        int raw_size = prefix_sizes[layer] + suffix_sizes[layer] +
+            tree.insertion_sizes[layer];
+
+        // perform SHA-1 preprocessing while loading the data for efficiency
+        // (reallocating memory in each iteration/GPU thread is very slow)
+        uint64_t m1 = 8 * raw_size;
+
+        int pad_bytes = 56 - (raw_size % 64);
+        if (pad_bytes <= 0) { // if = 0, need to increase so there's room for 0x80
+            pad_bytes += 64;
+        }
+        tree.layer_sizes[layer] = raw_size + pad_bytes + 8;
+
         tree.layer_templates[layer] = (uint8_t*)
-            malloc(tree.layer_sizes[layer]);
+            calloc(tree.layer_sizes[layer], sizeof(uint8_t));
+            // ensures that memory used for padding is zeroed
 
         memcpy(tree.layer_templates[layer],
             prefixes[layer], prefix_sizes[layer]);
         memcpy(tree.layer_templates[layer] + prefix_sizes[layer] +
             tree.insertion_sizes[layer], suffixes[layer],
             suffix_sizes[layer]);
+
+        tree.layer_templates[layer][raw_size] = 0x80;
+        for (int i = 0; i < 8; i++) {
+            // have to reverse because system is litte-endian and SHA-1
+            // requires big-endian ordering
+            tree.layer_templates[layer][raw_size + pad_bytes + i] =
+                ((uint8_t*)&m1)[ 7 - i ];
+        }
     }
 
     for (int i = 0; i < num_layers; i++) {
@@ -172,30 +192,14 @@ void sha1(uint8_t* result, uint8_t* message, unsigned int n_bytes) {
         h3 = 0x10325476,
         h4 = 0xC3D2E1F0;
 
-    uint64_t m1 = 8 * n_bytes;
-
-    int pad_bytes = 56 - (n_bytes % 64);
-    if (pad_bytes <= 0) { // if = 0, need to increase so there's room for 0x80
-        pad_bytes += 64;
-    }
-    int full_message_length = n_bytes + pad_bytes + 8;
-
-    uint8_t* message_padded = (uint8_t*) calloc(full_message_length, sizeof(uint8_t));
-    memcpy(message_padded, message, n_bytes);
-    message_padded[n_bytes] = 0x80;
-
-    for (int i = 0; i < 8; i++) {
-        message_padded[n_bytes + pad_bytes + i] = ((uint8_t*)&m1)[ 7 - i ];
-    }
-    // NOTE: on a big-endian system this would be much easier:
-    // *(uint64_t*)(message_padded + n_bytes + pad_bytes) = m1;
+    assert(n_bytes % 64 == 0);
 
     uint32_t w[80];
-    for (int chunk = 0; chunk < full_message_length; chunk += 64) {
+    for (int chunk = 0; chunk < n_bytes; chunk += 64) {
         for (int i = 0; i < 16; i++) {
             uint8_t* current_word = (uint8_t*)(w + i);
             for (int byte = 0; byte < 4; byte++) {
-                current_word[3 - byte] = message_padded[ chunk + (4 * i) + byte ];
+                current_word[3 - byte] = message[ chunk + (4 * i) + byte ];
             }
         }
         // generating the words is also theoretically easier on a big-endian
@@ -235,7 +239,6 @@ void sha1(uint8_t* result, uint8_t* message, unsigned int n_bytes) {
         h3 += d;
         h4 += e;
     }
-    free(message_padded);
 
     for (int i = 0; i < 4; i++) {
         result[ 3 - i] = h0 >> 8 * i;
