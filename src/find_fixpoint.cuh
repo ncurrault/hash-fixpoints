@@ -14,6 +14,12 @@ union PrefixCounter {
     uint8_t prefix[PREFIX_LEN];
 };
 
+#if SIMPLE_SHA
+
+void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
+    const unsigned int threads_per_block, bool* success, uint8_t* result);
+
+#else
 struct TreeData {
     int num_layers;
 
@@ -25,12 +31,9 @@ struct TreeData {
     bool* digest_types;
 };
 
-
-void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
-    const unsigned int threads_per_block, bool* success, uint8_t* result);
-
 void cudaCallTreeFixpointSearchKernel(const unsigned int blocks,
     const unsigned int threads_per_block, bool* success, uint8_t* result,
     struct TreeData* tree);
+#endif
 
 #endif

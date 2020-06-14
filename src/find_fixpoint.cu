@@ -11,6 +11,16 @@ uint32_t leftrotate(uint32_t a, uint32_t b) {
     return high | low;
 }
 
+__device__ bool arr_equal(uint8_t* a, uint8_t* b, unsigned int size) {
+    for (int i = 0; i < size; i++) {
+        if (a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#if SIMPLE_SHA
 /* adapted from https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
    assumes message is PREFIX_LEN bytes
 */
@@ -87,15 +97,6 @@ void sha1ofPrefix(uint8_t* result, uint8_t* prefix) {
     }
 }
 
-__device__ bool arr_equal(uint8_t* a, uint8_t* b, unsigned int size) {
-    for (int i = 0; i < size; i++) {
-        if (a[i] != b[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
 __global__
 void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
     PrefixCounter p;
@@ -126,6 +127,7 @@ void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
 }
 
 
+#else
 /***** TREE-SPECIFIC CODE *****/
 __device__
 void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
@@ -255,3 +257,5 @@ void cudaCallTreeFixpointSearchKernel(const unsigned int blocks,
         (success, result, tree);
     cudaDeviceSynchronize();
 }
+
+#endif

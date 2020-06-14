@@ -59,6 +59,7 @@ void print_hex(uint8_t* arr, int size) {
     }
 }
 
+#if SIMPLE_SHA
 int sha1_main(int argc, char **argv){
     uint8_t result[PREFIX_LEN];
 
@@ -88,6 +89,7 @@ int sha1_main(int argc, char **argv){
     return EXIT_SUCCESS;
 }
 
+#else
 /***** BEGINNING OF TREE-RELATED CODE *****/
 
 // see TreeData struct in find_fixpoint.cuh
@@ -321,7 +323,7 @@ int tree_main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-
+#endif
 /***** END OF TREE-RELATED CODE *****/
 
 int main(int argc, char **argv){
