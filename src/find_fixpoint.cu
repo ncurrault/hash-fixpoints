@@ -214,10 +214,10 @@ __global__
 void cudaTreeFixpointSearchKernel(bool* success, uint8_t* return_prefix,
     struct TreeData* tree) {
 
-    PrefixCounter p;
-    p.n = blockDim.x * blockIdx.x + threadIdx.x;
     uint8_t hash[HEXDIGEST_LEN];
 
+    PrefixCounter p;
+    p.n = blockDim.x * blockIdx.x + threadIdx.x;
     uint prev_n;
     do {
         memcpy(hash, p.prefix, PREFIX_LEN);

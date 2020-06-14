@@ -289,7 +289,7 @@ int tree_main(int argc, char **argv) {
     std::cout << "finished loading data from disk to CPU\n";
 
     struct TreeData* d_tree;
-    cudaMalloc(&d_tree, sizeof(struct TreeData));
+    gpuErrchk(cudaMalloc(&d_tree, sizeof(struct TreeData)));
     tree_host_to_device(tree, d_tree);
 
     // the rest is the same as for simple SHA-1:
