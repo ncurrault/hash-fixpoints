@@ -12,6 +12,18 @@ union PrefixCounter {
     uint8_t prefix[PREFIX_LEN];
 };
 
+__host__ __device__
+struct TreeData {
+    int num_layers;
+
+    int* layer_sizes;
+    uint8_t** layer_templates;
+    int* insertion_offsets;
+    int* insertion_sizes;
+
+    bool* digest_types;
+};
+
 
 void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
     const unsigned int threads_per_block, bool* success, uint8_t* result);
