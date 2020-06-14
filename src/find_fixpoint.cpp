@@ -232,16 +232,7 @@ void load_tree_from_dir(struct TreeData& tree, const char* dir) {
     free(suffix_sizes);
     // digest_types, prefix_sizes are used in the struct
 }
-void free_tree_contents(struct TreeData& tree) {
-    for (int i = 0; i < tree.num_layers; i++) {
-        free(tree.layer_templates[i]);
-    }
-    free(tree.layer_templates);
-    free(tree.layer_sizes);
-    free(tree.insertion_offsets);
-    free(tree.insertion_sizes);
-    free(tree.digest_types);
-}
+
 void tree_host_to_device(struct TreeData& source, struct TreeData* dest) {
     struct TreeData tmp;
     // will be copied to device after it is populated with dev pointers
@@ -279,6 +270,37 @@ void tree_host_to_device(struct TreeData& source, struct TreeData* dest) {
     gpuErrchk(cudaMemcpy(dest, &tmp, sizeof(struct TreeData),
         cudaMemcpyHostToDevice));
 }
+void free_host_tree_contents(struct TreeData& tree) {
+    for (int i = 0; i < tree.num_layers; i++) {
+        free(tree.layer_templates[i]);
+    }
+    free(tree.layer_templates);
+    free(tree.layer_sizes);
+    free(tree.insertion_offsets);
+    free(tree.insertion_sizes);
+    free(tree.digest_types);
+}
+void free_device_tree_contents(struct TreeData* dev_tree) {
+    struct TreeData tmp;
+    gpuErrchk(cudaMemcpy(&tmp, dev_tree, sizeof(struct TreeData),
+        cudaMemcpyDeviceToHost));
+
+    uint8_t** d_layer_templates = (uint8_t**) malloc(num_layers * sizeof(uint8_t*));
+    gpuErrchk(cudaMemcpy(d_layer_templates, tmp.layer_templates,
+        num_layers * sizeof(uint8_t*), cudaMemcpyDeviceToHost));
+
+    for (int i = 0; i < tmp.num_layers; i++) {
+        gpuErrchk(cudaFree(d_layer_templates[i]));
+    }
+    free(d_layer_templates);
+
+    gpuErrchk(cudaFree(tmp.layer_templates));
+    gpuErrchk(cudaFree(tmp.layer_sizes));
+    gpuErrchk(cudaFree(tmp.insertion_offsets));
+    gpuErrchk(cudaFree(tmp.insertion_sizes));
+    gpuErrchk(cudaFree(tmp.digest_types));
+}
+
 int tree_main(int argc, char **argv) {
     const unsigned int threads_per_block = atoi(argv[1]);
     const unsigned int max_blocks = atoi(argv[2]);
@@ -291,6 +313,7 @@ int tree_main(int argc, char **argv) {
     struct TreeData* d_tree;
     gpuErrchk(cudaMalloc(&d_tree, sizeof(struct TreeData)));
     tree_host_to_device(tree, d_tree);
+    free_host_tree_contents(tree);
 
     // the rest is the same as for simple SHA-1:
     bool h_success, *d_success;
@@ -320,6 +343,11 @@ int tree_main(int argc, char **argv) {
     } else {
         std::cout << "no fixpoints found :(\n";
     }
+
+    gpuErrchk(cudaFree(d_success));
+    gpuErrchk(cudaFree(d_result));
+    free_device_tree_contents(d_tree);
+    gpuErrchk(cudaFree(d_tree));
 
     return EXIT_SUCCESS;
 }
