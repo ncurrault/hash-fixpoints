@@ -199,8 +199,15 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         result[19 - i] = h4 >> 8 * i;
     }
 }
-void (hex_digest_inplace uint8_t* hash) {
-    // TODO
+void hex_digest_inplace(uint8_t* hash) {
+    const uint8_t digits[] = "0123456789abcdef";
+
+    char out[HEXDIGEST_LEN + 1]; // extra space for null terminator
+    for (int i = 0; i < HEXDIGEST_LEN >> 1; i++) {
+        out[2 * i] = digits[arr[i] >> 4];
+        out[2 * i + 1] = digits[arr[i] & 0x0f];
+    }
+    memcpy(arr, out, HEXDIGEST_LEN);
 }
 
 __global__
