@@ -336,6 +336,9 @@ int main(int argc, char **argv){
 
     check_args(argc, argv);
 
+    // NOTE: this task doesn't use any shared memory but it accesses global
+    // memory a fair amount, so more L1 cache should be beneficial
+    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 #if SIMPLE_SHA
     return sha1_main(argc, argv);
 #else

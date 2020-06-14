@@ -143,14 +143,12 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         for (int i = 0; i < 16; i++) {
             uint8_t* current_word = (uint8_t*)(w + i);
             for (int byte = 0; byte < 4; byte++) {
-                int desired_byte_idx = chunk + (4 * i) + byte;
-                if (desired_byte_idx >= insert_offset &&
-                    desired_byte_idx < insert_offset + insert_size) {
-                    current_word[3 - byte] =
-                        message_insert[desired_byte_idx - insert_offset];
-                } else {
-                    current_word[3 - byte] = message[desired_byte_idx];
-                }
+                int read_idx = chunk + (4 * i) + byte;
+                current_word[3 - byte] =
+                    (read_idx >= insert_offset && read_idx <
+                    insert_offset + insert_size)
+                    ? message_insert[read_idx - insert_offset]
+                    : message[read_idx];
             }
         }
         // generating the words is also theoretically easier on a big-endian
