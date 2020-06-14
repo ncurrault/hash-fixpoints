@@ -235,6 +235,7 @@ void sha1(uint8_t* result, uint8_t* message, unsigned int n_bytes) {
         h3 += d;
         h4 += e;
     }
+    free(message_padded);
 
     for (int i = 0; i < 4; i++) {
         result[ 3 - i] = h0 >> 8 * i;
