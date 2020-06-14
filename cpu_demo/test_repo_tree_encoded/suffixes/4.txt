@@ -1,0 +1,6 @@
+
+parent 3a50b3a18088b7a8b8116c4399bb5432c4dd62e4
+author Nicholas Currault <nicholas.curr@gmail.com> 1591753853 -0700
+committer Nicholas Currault <nicholas.curr@gmail.com> 1591753853 -0700
+
+added self-referential commit hash using magic

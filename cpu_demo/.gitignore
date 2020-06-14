@@ -1,0 +1,5 @@
+find_sha1_fixpoint
+find_tree_fixpoint
+*.o
+*.dSYM
+
