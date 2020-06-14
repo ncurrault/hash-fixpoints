@@ -109,7 +109,9 @@ void cudaShaFixpointSearchKernel(bool* success, uint8_t* prefix) {
         if (arr_equal(result, p.prefix, PREFIX_LEN)) {
             *success = true;
             memcpy(prefix, p.prefix, PREFIX_LEN);
-            // TODO quit all threads
+            break;
+        } else if (*success) { // another thread found a fixpoint
+            break;
         }
 
         prev_n = p.n;
@@ -236,7 +238,9 @@ void cudaTreeFixpointSearchKernel(bool* success, uint8_t* return_prefix,
         if (arr_equal(hash, p.prefix, PREFIX_LEN)) {
             *success = true;
             memcpy(return_prefix, p.prefix, PREFIX_LEN);
-            // TODO quit all threads
+            break;
+        } else if (*success) { // another thread found a fixpoint
+            break;
         }
 
         prev_n = p.n;
