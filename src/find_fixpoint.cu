@@ -199,7 +199,7 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         result[19 - i] = h4 >> 8 * i;
     }
 }
-void hex_digest_inplace(uint8_t* hash) {
+void hex_digest_inplace(uint8_t* arr) {
     const uint8_t digits[] = "0123456789abcdef";
 
     char out[HEXDIGEST_LEN + 1]; // extra space for null terminator
@@ -221,14 +221,14 @@ void cudaTreeFixpointSearchKernel(bool* success, uint8_t* return_prefix,
     uint prev_n;
     do {
         memcpy(hash, p.prefix, PREFIX_LEN);
-        hex_digest_inplace(result);
+        hex_digest_inplace(hash);
 
         for (int layer = 0; layer < tree->num_layers; layer++) {
             sha1WithInsertion(hash, tree->layer_templates[layer],
                 tree->layer_sizes[layer], hash, tree->insertion_offsets[layer],
-                tree->insert_sizes[layer]);
+                tree->insertion_sizes[layer]);
 
-            if (tree.digest_types[layer]) {
+            if (tree->digest_types[layer]) {
                 hex_digest_inplace(hash);
             }
         }
