@@ -19,18 +19,6 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-const float PI = 3.14159265358979;
-
-#if AUDIO_ON
-    #include <sndfile.h>
-#endif
-
-
-float gaussian(float x, float mean, float std){
-    return (1 / (std * sqrt(2 * PI) ) )
-        * exp(-1.0/2.0 * pow((x - mean) / std, 2) );
-}
-
 /*
 Modified from:
 http://stackoverflow.com/questions/14038589/
@@ -58,7 +46,8 @@ void check_args(int argc, char **argv){
 #else
     if (argc < 5){
         std::cerr << "Incorrect number of arguments.\n";
-        std::cerr << "Arguments: <threads per block> <max number of blocks> <path to bytes directory> [digest type bits]\n";
+        std::cerr << "Arguments: <threads per block> <max number of blocks> "
+            << "<tree directory>\n";
         exit(EXIT_FAILURE);
     }
 #endif
