@@ -125,6 +125,31 @@ void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
 }
 
 
-// TODO
-// __global__ void cudaTreeFixpointSearchKernel
-// void cudaCall...
+/***** TREE-SPECIFIC CODE *****/
+
+__global__
+void cudaTreeFixpointSearchKernel(bool* success, uint8_t* prefix,
+    struct TreeData* tree) {
+
+    PrefixCounter p;
+    p.n = blockDim.x * blockIdx.x + threadIdx.x;
+    uint8_t result[PREFIX_LEN];
+
+    uint prev_n;
+    do {
+        // TODO
+
+        prev_n = p.n;
+        p.n += blockDim.x * gridDim.x;
+    } while (p.n > prev_n);
+}
+
+
+void cudaCallTreeFixpointSearchKernel(const unsigned int blocks,
+    const unsigned int threads_per_block, bool* success, uint8_t* result,
+    struct TreeData* tree) {
+
+    cudaTreeFixpointSearchKernel
+        <<<blocks, threads_per_block>>>
+        (success, result, tree);
+}
