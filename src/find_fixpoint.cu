@@ -122,7 +122,6 @@ void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
     const unsigned int threads_per_block, bool* success, uint8_t* result) {
 
     cudaShaFixpointSearchKernel<<<blocks, threads_per_block>>>(success, result);
-    cudaDeviceSynchronize();
 }
 
 
@@ -253,5 +252,4 @@ void cudaCallTreeFixpointSearchKernel(const unsigned int blocks,
     cudaTreeFixpointSearchKernel
         <<<blocks, threads_per_block>>>
         (success, result, tree);
-    cudaDeviceSynchronize();
 }

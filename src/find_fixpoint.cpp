@@ -305,6 +305,9 @@ int tree_main(int argc, char **argv) {
 
     cudaCallTreeFixpointSearchKernel(max_blocks, threads_per_block, d_success,
         d_result, d_tree);
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+    // recommended by the same StackOverflow page cited for gpuErrchk
 
     gpuErrchk(cudaMemcpy(&h_success, d_success, sizeof(bool),
         cudaMemcpyDeviceToHost));
