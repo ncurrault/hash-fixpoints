@@ -126,18 +126,111 @@ void cudaCallShaFixpointSearchKernel(const unsigned int blocks,
 
 
 /***** TREE-SPECIFIC CODE *****/
+__device__
+void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
+    uint8_t* message_insert, uint insert_offset, uint insert_size) {
+    uint32_t
+        h0 = 0x67452301,
+        h1 = 0xEFCDAB89,
+        h2 = 0x98BADCFE,
+        h3 = 0x10325476,
+        h4 = 0xC3D2E1F0;
+
+    assert(n_bytes % 64 == 0);
+
+    uint32_t w[80];
+    for (int chunk = 0; chunk < n_bytes; chunk += 64) {
+        for (int i = 0; i < 16; i++) {
+            uint8_t* current_word = (uint8_t*)(w + i);
+            for (int byte = 0; byte < 4; byte++) {
+                int desired_byte_idx = chunk + (4 * i) + byte;
+                if (desired_byte_idx >= insert_offset &&
+                    desired_byte_idx < insert_offset + insert_size) {
+                    current_word[3 - byte] =
+                        message_insert[desired_byte_idx - insert_offset];
+                } else {
+                    current_word[3 - byte] = message[desired_byte_idx];
+                }
+            }
+        }
+        // generating the words is also theoretically easier on a big-endian
+        // system: memcpy(w, message_padded + chunk, 16 * sizeof(uint32_t));
+
+        for (int i = 16; i < 80; i++) {
+            w[i] = leftrotate(w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16], 1);
+        }
+
+        uint32_t a = h0, b = h1, c = h2, d = h3, e = h4, f, k;
+        for (int i = 0; i < 80; i++) {
+            if (i < 20) {
+                f = (b & c) | ((~b) & d);
+                k = 0x5A827999;
+            } else if (i < 40) {
+                f = b ^ c ^ d;
+                k = 0x6ED9EBA1;
+            } else if (i < 60) {
+                f = (b & c) | (b & d) | (c & d);
+                k = 0x8F1BBCDC;
+            } else {
+                f = b ^ c ^ d;
+                k = 0xCA62C1D6;
+            }
+
+            uint32_t temp = leftrotate(a, 5) + f + e + k + w[i];
+            e = d;
+            d = c;
+            c = leftrotate(b, 30);
+            b = a;
+            a = temp;
+        }
+
+        h0 += a;
+        h1 += b;
+        h2 += c;
+        h3 += d;
+        h4 += e;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        result[ 3 - i] = h0 >> 8 * i;
+        result[ 7 - i] = h1 >> 8 * i;
+        result[11 - i] = h2 >> 8 * i;
+        result[15 - i] = h3 >> 8 * i;
+        result[19 - i] = h4 >> 8 * i;
+    }
+}
+void (hex_digest_inplace uint8_t* hash) {
+    // TODO
+}
 
 __global__
-void cudaTreeFixpointSearchKernel(bool* success, uint8_t* prefix,
+void cudaTreeFixpointSearchKernel(bool* success, uint8_t* return_prefix,
     struct TreeData* tree) {
 
     PrefixCounter p;
     p.n = blockDim.x * blockIdx.x + threadIdx.x;
-    uint8_t result[PREFIX_LEN];
+    uint8_t hash[HEXDIGEST_LEN];
 
     uint prev_n;
     do {
-        // TODO
+        memcpy(hash, p.prefix, PREFIX_LEN);
+        hex_digest_inplace(result);
+
+        for (int layer = 0; layer < tree->num_layers; layer++) {
+            sha1WithInsertion(hash, tree->layer_templates[layer],
+                tree->layer_sizes[layer], hash, tree->insertion_offsets[layer],
+                tree->insert_sizes[layer]);
+
+            if (tree.digest_types[layer]) {
+                hex_digest_inplace(hash);
+            }
+        }
+
+        if (arr_equal(hash, p.prefix, PREFIX_LEN)) {
+            *success = true;
+            memcpy(return_prefix, p.prefix, PREFIX_LEN);
+            // TODO quit all threads
+        }
 
         prev_n = p.n;
         p.n += blockDim.x * gridDim.x;
