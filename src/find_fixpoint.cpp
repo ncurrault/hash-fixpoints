@@ -233,24 +233,28 @@ void tree_host_to_device(struct TreeData& source, struct TreeData* dest) {
     gpuErrchk(cudaMemcpy(tmp.layer_sizes, source.layer_sizes,
         num_layers * sizeof(int), cudaMemcpyHostToDevice));
 
-    uint8_t** d_layer_templates = malloc(num_layers * sizeof(uint8_t*));
+    uint8_t** d_layer_templates = (uint8_t**) malloc(num_layers * sizeof(uint8_t*));
     for (int i = 0; i < num_layers; i++) {
         gpuErrchk(cudaMalloc(&d_layer_templates[i], tmp.layer_sizes[i]));
         gpuErrchk(cudaMemcpy(d_layer_templates[i], tmp.layer_templates[i],
             tmp.layer_sizes[i], cudaMemcpyHostToDevice));
     }
-    gpuErrchk((cudaMalloc(&tmp.layer_templates, num_layers * sizeof(uint8_t*)));
-    gpuErrchk(cudaMemcpy(tmp.layer_templates, num_layers * sizeof(uint8_t*)));
+    gpuErrchk(cudaMalloc(&tmp.layer_templates, num_layers * sizeof(uint8_t*)));
+    gpuErrchk(cudaMemcpy(tmp.layer_templates, source.layer_templates,
+        num_layers * sizeof(uint8_t*), cudaMemcpyHostToDevice));
     free(d_layer_templates);
 
     gpuErrchk(cudaMalloc(&tmp.insertion_offsets, num_layers * sizeof(int)));
-    gpuErrchk(cudaMemcpy(tmp.insertion_offsets, num_layers * sizeof(int)));
+    gpuErrchk(cudaMemcpy(tmp.insertion_offsets, source.insertion_offsets,
+        num_layers * sizeof(int), cudaMemcpyHostToDevice));
 
     gpuErrchk(cudaMalloc(&tmp.insertion_sizes, num_layers * sizeof(int)));
-    gpuErrchk(cudaMemcpy(tmp.insertion_sizes, num_layers * sizeof(int)));
+    gpuErrchk(cudaMemcpy(tmp.insertion_sizes, source.insertion_sizes,
+        num_layers * sizeof(int), cudaMemcpyHostToDevice));
 
     gpuErrchk(cudaMalloc(&tmp.digest_types, num_layers * sizeof(bool)));
-    gpuErrchk(cudaMemcpy(tmp.digest_types, num_layers * sizeof(bool)));
+    gpuErrchk(cudaMemcpy(tmp.digest_types, source.digest_types,
+        num_layers * sizeof(bool), cudaMemcpyHostToDevice));
 
     gpuErrchk(cudaMemcpy(dest, &tmp, sizeof(struct TreeData),
         cudaMemcpyHostToDevice));
@@ -262,7 +266,8 @@ int tree_main(int argc, char **argv) {
     struct TreeData tree;
     load_tree_from_dir(tree, argv[3]);
 
-    struct TreeData* d_tree = cudaMalloc(&dest, sizeof(struct TreeData));
+    struct TreeData* d_tree;
+    cudaMalloc(&d_tree, sizeof(struct TreeData));
     tree_host_to_device(tree, d_tree);
 
     // the rest is the same as for simple SHA-1:
@@ -271,6 +276,7 @@ int tree_main(int argc, char **argv) {
     gpuErrchk(cudaMemset(d_success, 0, sizeof(bool)));
 
     uint8_t *d_result;
+    uint8_t result[PREFIX_LEN];
     gpuErrchk(cudaMalloc(&d_result, PREFIX_LEN * sizeof(uint8_t)));
 
     cudaCallTreeFixpointSearchKernel(max_blocks, threads_per_block, d_success,
