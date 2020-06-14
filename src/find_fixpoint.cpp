@@ -286,6 +286,8 @@ int tree_main(int argc, char **argv) {
     struct TreeData tree;
     load_tree_from_dir(tree, argv[3]);
 
+    std::cout << "finished loading data from disk to CPU\n";
+
     struct TreeData* d_tree;
     cudaMalloc(&d_tree, sizeof(struct TreeData));
     tree_host_to_device(tree, d_tree);
@@ -298,6 +300,8 @@ int tree_main(int argc, char **argv) {
     uint8_t *d_result;
     uint8_t result[PREFIX_LEN];
     gpuErrchk(cudaMalloc(&d_result, PREFIX_LEN * sizeof(uint8_t)));
+
+    std::cout << "finished loading data from CPU to GPU\n";
 
     cudaCallTreeFixpointSearchKernel(max_blocks, threads_per_block, d_success,
         d_result, d_tree);
