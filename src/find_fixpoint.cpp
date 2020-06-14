@@ -285,6 +285,7 @@ void free_device_tree_contents(struct TreeData* dev_tree) {
     gpuErrchk(cudaMemcpy(&tmp, dev_tree, sizeof(struct TreeData),
         cudaMemcpyDeviceToHost));
 
+    int num_layers = tmp.num_layers;
     uint8_t** d_layer_templates = (uint8_t**) malloc(num_layers * sizeof(uint8_t*));
     gpuErrchk(cudaMemcpy(d_layer_templates, tmp.layer_templates,
         num_layers * sizeof(uint8_t*), cudaMemcpyDeviceToHost));
