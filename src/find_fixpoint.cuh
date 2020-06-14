@@ -7,12 +7,14 @@
 #define PREFIX_COUNTER_TYPE uint32_t
 #define PREFIX_COUNTER_MAX UINT32_MAX
 
+#define HEXDIGEST_LEN 40
+#define DIGEST_LEN 20
+
 union PrefixCounter {
     PREFIX_COUNTER_TYPE n;
     uint8_t prefix[PREFIX_LEN];
 };
 
-__host__ __device__
 struct TreeData {
     int num_layers;
 
