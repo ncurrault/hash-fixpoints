@@ -67,12 +67,25 @@ digest_types = [False for _ in range(len(hashes) - 2)] + [True, False]
 # True = hexdigest
 # False = digest
 
-for i in range(len(hashes)):
+def tree_unprettify(tree_pretty_printed):
+    out = b""
+    for line in tree_pretty_printed.splitlines():
+        toks = line.split()
+        out += toks[0] + b" " # mode
+        out += toks[3] + b"\0" # filename (no spaces in any fname assumed)
+        out += bytes.fromhex(toks[2].decode())
+    return out
+
+for i in range(len(hashes) - 1):
     hash = hashes[i].decode()
-    with open(".git/objects/{}/{}".format(hash[:2], hash[2:]), "rb") as f:
-        git_obj_contents = subprocess.check_output(["pigz", "-d"], stdin=f)
-        # NOTE this is a program that decodes git object files
-        # https://stackoverflow.com/a/3178638
+
+    git_obj_type = subprocess.check_output(["git", "cat-file", "-t", hash])[:-1]
+    git_obj_size = subprocess.check_output(["git", "cat-file", "-s", hash])[:-1]
+
+    git_obj_body = subprocess.check_output(["git", "cat-file", "-p", hash])
+    if i > 0:
+        git_obj_body = tree_unprettify(git_obj_body)
+    git_obj_contents = b"%s %s\0%s" % (git_obj_type, git_obj_size, git_obj_body)
 
     if i == 0:
         prefix_end = git_obj_contents.find(to_replace)
@@ -90,7 +103,6 @@ for i in range(len(hashes)):
     merkle_layer_suffixes.append(git_obj_contents[suffix_begin:])
     prev_hash = hash
 
-# overwrite the final layer (above code copied commit bytes from HEAD)
 commit_suffix = bytes("""
 parent {parent_commit}
 author {author_str} {timestamp} {timezone}
@@ -104,8 +116,8 @@ commit_prefix = bytes("commit {}\0tree ".format(
     len(commit_suffix) + 5 + HEXDIGEST_LEN), encoding="utf-8")
     # total size is suffix + tree hash + len("tree ")
 
-merkle_layer_prefixes[-1] = commit_prefix
-merkle_layer_suffixes[-1] = commit_suffix
+merkle_layer_prefixes.append(commit_prefix)
+merkle_layer_suffixes.append(commit_suffix)
 
 # ensure blob header is accurate with prefix length
 merkle_layer_prefixes[0] = merkle_layer_prefixes[0][ merkle_layer_prefixes[0].find(b"\0") + 1:]
