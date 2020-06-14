@@ -136,8 +136,6 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         h3 = 0x10325476,
         h4 = 0xC3D2E1F0;
 
-    assert(n_bytes % 64 == 0);
-
     uint32_t w[80];
     for (int chunk = 0; chunk < n_bytes; chunk += 64) {
         for (int i = 0; i < 16; i++) {
@@ -199,6 +197,8 @@ void sha1WithInsertion(uint8_t* result, uint8_t* message, uint n_bytes,
         result[19 - i] = h4 >> 8 * i;
     }
 }
+
+__device__
 void hex_digest_inplace(uint8_t* arr) {
     const uint8_t digits[] = "0123456789abcdef";
 
