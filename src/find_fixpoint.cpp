@@ -260,7 +260,7 @@ void tree_host_to_device(struct TreeData& source, struct TreeData* dest) {
             source.layer_sizes[i], cudaMemcpyHostToDevice));
     }
     gpuErrchk(cudaMalloc(&tmp.layer_templates, num_layers * sizeof(uint8_t*)));
-    gpuErrchk(cudaMemcpy(tmp.layer_templates, source.layer_templates,
+    gpuErrchk(cudaMemcpy(tmp.layer_templates, d_layer_templates,
         num_layers * sizeof(uint8_t*), cudaMemcpyHostToDevice));
     free(d_layer_templates);
 
