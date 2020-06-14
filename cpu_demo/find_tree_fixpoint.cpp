@@ -15,7 +15,26 @@
 
 /* NOTE this program assumes the system is little-endian */
 
-struct TreePuzzle {
+struct TreeData {
+    int num_layers;
+
+    int* layer_sizes;
+    uint8_t** layer_templates;
+    int* insertion_offsets;
+    int* insertion_sizes;
+
+    bool* digest_types;
+};
+
+// https://stackoverflow.com/a/5840160
+std::ifstream::pos_type filesize(const char* filename) {
+    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+    return in.tellg();
+}
+void load_tree_from_dir(struct TreeData& tree, const char* dir) {
+    // if you're reading this function I'm sorry
+
+    // STEP 1: load affix data from the filesystem
     int num_layers;
     bool* digest_types;
 
@@ -24,92 +43,118 @@ struct TreePuzzle {
 
     int* suffix_sizes;
     char** suffixes;
-};
-
-
-// https://stackoverflow.com/a/5840160
-std::ifstream::pos_type filesize(const char* filename)
-{
-    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-    return in.tellg();
-}
-
-void load_from_dir(struct TreePuzzle& target, const char* dir) {
-    // if you're reading this function I'm sorry
 
     char* digest_bits_fname = (char*) malloc(strlen(dir) + 20);
     strcpy(digest_bits_fname, dir);
     strcat(digest_bits_fname, "digest_bits.txt");
     std::ifstream digest_bits_stream(digest_bits_fname);
-    target.num_layers = 0;
+    num_layers = 0;
     int capacity = 8;
-    target.digest_types = (bool *) malloc(capacity * sizeof(bool));
+    digest_types = (bool *) malloc(capacity * sizeof(bool));
     char bit;
     while (digest_bits_stream >> bit) {
-        target.num_layers++;
-        if (target.num_layers > capacity) {
+        num_layers++;
+        if (num_layers > capacity) {
             capacity <<= 1;
-            target.digest_types = (bool*) realloc(target.digest_types,
+            digest_types = (bool*) realloc(digest_types,
                 capacity * sizeof(bool));
         }
         if (bit == '1') {
-            target.digest_types[target.num_layers - 1] = true;
+            digest_types[num_layers - 1] = true;
         } else if (bit == '0') {
-            target.digest_types[target.num_layers - 1] = false;
+            digest_types[num_layers - 1] = false;
         } else {
             std::cerr << "unexpected bit in digest_bits.txt: " << bit << "\n";
             exit(1);
         }
     }
     free(digest_bits_fname);
-    assert(target.num_layers > 0);
+    assert(num_layers > 0);
 
-    target.prefix_sizes = (int *) malloc(target.num_layers * sizeof(int));
-    target.prefixes = (char**) malloc(target.num_layers * sizeof(char*));
+    prefix_sizes = (int *) malloc(num_layers * sizeof(int));
+    prefixes = (char**) malloc(num_layers * sizeof(char*));
 
-    target.suffix_sizes = (int *) malloc(target.num_layers * sizeof(int));
-    target.suffixes = (char**) malloc(target.num_layers * sizeof(char*));
+    suffix_sizes = (int *) malloc(num_layers * sizeof(int));
+    suffixes = (char**) malloc(num_layers * sizeof(char*));
 
-    for (int i = 0; i < target.num_layers; i++) {
+    for (int i = 0; i < num_layers; i++) {
         char prefix_fname[50];
         char suffix_fname[50];
         sprintf(prefix_fname, "%s/prefixes/%d.txt", dir, i);
         sprintf(suffix_fname, "%s/suffixes/%d.txt", dir, i);
 
-        target.prefix_sizes[i] = filesize(prefix_fname);
-        target.suffix_sizes[i] = filesize(suffix_fname);
+        prefix_sizes[i] = filesize(prefix_fname);
+        suffix_sizes[i] = filesize(suffix_fname);
 
-        target.prefixes[i] = (char*) malloc(target.prefix_sizes[i]);
-        target.suffixes[i] = (char*) malloc(target.suffix_sizes[i]);
+        prefixes[i] = (char*) malloc(prefix_sizes[i]);
+        suffixes[i] = (char*) malloc(suffix_sizes[i]);
 
         std::ifstream prefix_in, suffix_in;
         prefix_in.open(prefix_fname);
         suffix_in.open(suffix_fname);
 
-        prefix_in.read(target.prefixes[i], target.prefix_sizes[i]);
-        suffix_in.read(target.suffixes[i], target.suffix_sizes[i]);
+        prefix_in.read(prefixes[i], prefix_sizes[i]);
+        suffix_in.read(suffixes[i], suffix_sizes[i]);
 
         prefix_in.close();
         suffix_in.close();
     }
-}
-void free_tree_contents(struct TreePuzzle& t) {
-    free(t.digest_types);
-    for (int i = 0; i < t.num_layers; i++) {
-        free(t.prefixes[i]);
-        free(t.suffixes[i]);
+
+    // STEP 2: translate affix data into TreeData (essentially construct each
+    // layer's data with a hole for the hash that's the proper size)
+    tree.num_layers = num_layers;
+    tree.insertion_offsets = prefix_sizes;
+    // TODO free everything else
+
+    tree.layer_sizes = (int*) malloc(num_layers * sizeof(int));
+    tree.layer_templates = (uint8_t**)
+        malloc(num_layers * sizeof(uint8_t*));
+    tree.insertion_sizes = (int*) malloc(num_layers * sizeof(int));
+
+    tree.digest_types = digest_types;
+
+    for (int layer = 0; layer < num_layers; layer++) {
+        if (layer == 0) {
+            tree.insertion_sizes[layer] = 2 * PREFIX_LEN;
+            // NOTE: assumes initial hash written to file is hex-digested
+            // TODO: make this customizable in digest_bits.txt instead of the
+            // final output (as what is desired there depends on the context)
+        } else if (tree.digest_types[layer - 1]) {
+            tree.insertion_sizes[layer] = HEXDIGEST_LEN;
+        } else {
+            tree.insertion_sizes[layer] = DIGEST_LEN;
+        }
+
+        tree.layer_sizes[layer] = prefix_sizes[layer] +
+            suffix_sizes[layer] + tree.insertion_sizes[layer];
+        tree.layer_templates[layer] = (uint8_t*)
+            malloc(tree.layer_sizes[layer]);
+
+        memcpy(tree.layer_templates[layer],
+            prefixes[layer], prefix_sizes[layer]);
+        memcpy(tree.layer_templates[layer] + prefix_sizes[layer] +
+            tree.insertion_sizes[layer], suffixes[layer],
+            suffix_sizes[layer]);
     }
-    free(t.prefixes);
-    free(t.suffixes);
-    free(t.prefix_sizes);
-    free(t.suffix_sizes);
-}
-void print_tree_summary(struct TreePuzzle& t) {
-    for (int i = 0; i < t.num_layers; i++) {
-        printf("layer %d: prefix size %d at %p, suffix size %d at %p\n",
-            i, t.prefix_sizes[i], t.prefixes[i],
-            t.suffix_sizes[i], t.suffixes[i]);
+
+    for (int i = 0; i < num_layers; i++) {
+        free(prefixes[i]);
+        free(suffixes[i]);
     }
+    free(prefixes);
+    free(suffixes);
+    free(suffix_sizes);
+    // digest_types, prefix_sizes are used in the struct
+}
+void free_tree_contents(struct TreeData& tree) {
+    for (int i = 0; i < tree.num_layers; i++) {
+        free(tree.layer_templates[i]);
+    }
+    free(tree.layer_templates);
+    free(tree.layer_sizes);
+    free(tree.insertion_offsets);
+    free(tree.insertion_sizes);
+    free(tree.digest_types);
 }
 
 uint32_t leftrotate(uint32_t a, uint32_t b) {
@@ -200,7 +245,6 @@ void sha1(uint8_t* result, uint8_t* message, unsigned int n_bytes) {
     }
 }
 
-
 void hash_hex_digest_inplace(uint8_t* hash) {
     char output[HEXDIGEST_LEN + 1]; // extra space for null terminator
     for (int i = 0; i < DIGEST_LEN; i++) {
@@ -209,52 +253,24 @@ void hash_hex_digest_inplace(uint8_t* hash) {
     }
     memcpy(hash, output, HEXDIGEST_LEN);
 }
-
 void print_hex(uint8_t* arr, int size) {
     for (int i = 0; i < size; i++) {
         printf("%02x", arr[i]);
     }
 }
-
 union PrefixCounter {
     PREFIX_COUNTER_TYPE n;
     uint8_t prefix[PREFIX_LEN];
 };
 
 int main(int argc, char** argv) {
-    struct TreePuzzle t;
-    load_from_dir(t, argv[1]);
+    struct TreeData tree;
+    load_tree_from_dir(tree, argv[1]);
 
     assert(sizeof(PREFIX_COUNTER_TYPE) >= PREFIX_LEN * sizeof(uint8_t));
 
     PrefixCounter p;
     p.n = 0;
-
-    int* layer_sizes = (int*) malloc(t.num_layers * sizeof(int));
-    uint8_t** data_by_layer = (uint8_t**) malloc(t.num_layers * sizeof(uint8_t*));
-    int* insert_sizes = (int*) malloc(t.num_layers * sizeof(int));
-
-    for (int layer = 0; layer < t.num_layers; layer++) {
-        if (layer == 0) {
-            insert_sizes[layer] = 2 * PREFIX_LEN;
-            // NOTE: assumes initial hash written to file is hex-digested
-            // TODO: make this customizable in digest_bits.txt instead of the
-            // final output (as what is desired there depends on the context)
-        } else if (t.digest_types[layer - 1]) {
-            insert_sizes[layer] = HEXDIGEST_LEN;
-        } else {
-            insert_sizes[layer] = DIGEST_LEN;
-        }
-
-        layer_sizes[layer] = t.prefix_sizes[layer] +
-            t.suffix_sizes[layer] + insert_sizes[layer];
-        data_by_layer[layer] = (uint8_t*) malloc(layer_sizes[layer]);
-
-        memcpy(data_by_layer[layer],
-            t.prefixes[layer], t.prefix_sizes[layer]);
-        memcpy(data_by_layer[layer] + t.prefix_sizes[layer] + insert_sizes[layer],
-            t.suffixes[layer], t.suffix_sizes[layer]);
-    }
 
     uint8_t hash[HEXDIGEST_LEN]; // sometimes only first DIGEST_LEN bytes used
     do {
@@ -264,12 +280,12 @@ int main(int argc, char** argv) {
         // NOTE: assumes initial hash written to file is hex-digested
         // (see note above when computing insert_sizes[0])
 
-        for (int layer = 0; layer < t.num_layers; layer++) {
-            memcpy(data_by_layer[layer] + t.prefix_sizes[layer],
-                hash, insert_sizes[layer]);
-            sha1(hash, data_by_layer[layer], layer_sizes[layer]);
+        for (int layer = 0; layer < tree.num_layers; layer++) {
+            memcpy(tree.layer_templates[layer] + tree.insertion_offsets[layer],
+                hash, tree.insertion_sizes[layer]);
+            sha1(hash, tree.layer_templates[layer], tree.layer_sizes[layer]);
 
-            if (t.digest_types[layer]) {
+            if (tree.digest_types[layer]) {
                 hash_hex_digest_inplace(hash);
             }
         }
@@ -286,10 +302,7 @@ int main(int argc, char** argv) {
         p.n++;
     } while (p.n != 0);
 
-    free_tree_contents(t);
-    free(layer_sizes);
-    free(data_by_layer);
-    free(insert_sizes);
+    free_tree_contents(tree);
 
     return 0;
 }
